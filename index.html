@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trust Wordle — 2 Kings 18–19</title>
+<style>
+:root{--bg:#f7f3e8;--card:#fff;--text:#222;--border:#8c8578;--green:#538d4e;--gold:#b59f3b;--gray:#6b7280;--accent:#5a3e2b}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
+main{width:min(720px,94vw);margin:24px auto;padding:22px;background:var(--card);border:1px solid #d7d0c2;border-radius:18px}
+h1{text-align:center;margin:0 0 6px}
+.subtitle{text-align:center;margin:0 0 20px;color:#5f5a51}
+#board{width:min(350px,92vw);margin:0 auto;display:grid;gap:7px}
+.row{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.tile{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border:2px solid var(--border);border-radius:7px;font-size:clamp(24px,7vw,36px);font-weight:700;text-transform:uppercase;background:#fff}
+.filled{border-color:#333}.correct{background:var(--green);border-color:var(--green);color:#fff}.present{background:var(--gold);border-color:var(--gold);color:#fff}.absent{background:var(--gray);border-color:var(--gray);color:#fff}
+#message{text-align:center;min-height:28px;margin:16px 0 12px;font-weight:700}
+#keyboard{max-width:620px;margin:0 auto;display:grid;gap:7px}
+.keyrow{display:flex;justify-content:center;gap:5px}
+.key{flex:1;max-width:52px;padding:13px 3px;border:1px solid #aaa;border-radius:7px;background:#dedbd3;font-weight:700;cursor:pointer}
+.key.wide{max-width:78px;font-size:12px}.controls{display:flex;justify-content:center;gap:10px;margin-top:16px}
+.controls button{padding:11px 18px;border-radius:9px;border:1px solid #7a6a58;background:#fff;font-weight:700;cursor:pointer}
+#submit{background:var(--accent);color:#fff}
+#lesson{display:none;margin-top:18px;padding:16px;border-left:5px solid var(--gold);background:#f6edcf;border-radius:8px}
+small{display:block;text-align:center;margin-top:16px;color:#69645c}
+</style>
+</head>
+<body>
+<main>
+<h1>TRUST Wordle</h1>
+<p class="subtitle">2 Kings 18–19 lesson challenge</p>
+<div id="board" aria-label="Word guessing board"></div>
+<p id="message" aria-live="polite">Enter a five-letter word.</p>
+<div id="keyboard"></div>
+<div class="controls">
+<button id="submit" type="button">Submit Guess</button>
+<button id="reset" type="button">Restart</button>
+</div>
+<div id="lesson">
+<strong>Lesson connection:</strong>
+<p>Hezekiah chose to trust the Lord rather than surrender to fear. What pressures make it difficult for us to trust God today?</p>
+</div>
+<small>Green = correct place · Gold = wrong place · Gray = not in the word</small>
+</main>
+<script>
+const answer="TRUST", maxRows=6;
+let guesses,row,col,gameOver,keyStates;
+const board=document.getElementById("board"),keyboard=document.getElementById("keyboard"),message=document.getElementById("message"),lesson=document.getElementById("lesson");
+
+function setup(){
+ guesses=Array.from({length:maxRows},()=>Array(5).fill(""));
+ row=0;col=0;gameOver=false;keyStates={};
+ board.innerHTML=""; keyboard.innerHTML=""; lesson.style.display="none"; message.textContent="Enter a five-letter word.";
+ for(let r=0;r<maxRows;r++){const re=document.createElement("div");re.className="row";re.dataset.row=r;
+  for(let c=0;c<5;c++){const t=document.createElement("div");t.className="tile";t.dataset.row=r;t.dataset.col=c;re.appendChild(t)}
+  board.appendChild(re)}
+ ["QWERTYUIOP","ASDFGHJKL","ZXCVBNM"].forEach((letters,i)=>{const kr=document.createElement("div");kr.className="keyrow";
+  if(i===2)kr.appendChild(makeKey("ENTER",true));
+  [...letters].forEach(l=>kr.appendChild(makeKey(l,false)));
+  if(i===2)kr.appendChild(makeKey("⌫",true));
+  keyboard.appendChild(kr)})
+}
+function makeKey(label,wide){const b=document.createElement("button");b.type="button";b.textContent=label;b.dataset.key=label;b.className="key"+(wide?" wide":"");b.addEventListener("click",()=>handle(label));return b}
+function tile(r,c){return board.querySelector(`[data-row="${r}"] [data-col="${c}"]`)}
+function handle(k){if(gameOver)return;if(k==="ENTER")submit();else if(k==="⌫"||k==="BACKSPACE")back();else if(/^[A-Z]$/.test(k))add(k)}
+function add(l){if(col>=5)return;guesses[row][col]=l;const t=tile(row,col);t.textContent=l;t.classList.add("filled");col++}
+function back(){if(col<=0)return;col--;guesses[row][col]="";const t=tile(row,col);t.textContent="";t.classList.remove("filled")}
+function score(g){const out=Array(5).fill("absent"),remain=[...answer];for(let i=0;i<5;i++)if(g[i]===answer[i]){out[i]="correct";remain[i]=null}
+ for(let i=0;i<5;i++){if(out[i]==="correct")continue;const j=remain.indexOf(g[i]);if(j!==-1){out[i]="present";remain[j]=null}}return out}
+function updateKey(l,s){const rank={absent:1,present:2,correct:3};if((rank[keyStates[l]]||0)>=rank[s])return;keyStates[l]=s;const k=keyboard.querySelector(`[data-key="${l}"]`);if(k){k.classList.remove("absent","present","correct");k.classList.add(s)}}
+function submit(){const g=guesses[row].join("");if(g.length!==5){message.textContent="Your guess must contain five letters.";return}
+ const result=score(g);result.forEach((s,i)=>{setTimeout(()=>tile(row,i).classList.add(s),i*120);updateKey(g[i],s)});
+ if(g===answer){gameOver=true;setTimeout(()=>{message.textContent="Correct — TRUST!";lesson.style.display="block"},700);return}
+ row++;col=0;if(row>=maxRows){gameOver=true;setTimeout(()=>{message.textContent="The word was TRUST.";lesson.style.display="block"},700)}
+ else message.textContent=`${maxRows-row} guesses remaining.`}
+document.getElementById("submit").addEventListener("click",submit);
+document.getElementById("reset").addEventListener("click",setup);
+document.addEventListener("keydown",e=>{if(e.key==="Enter")handle("ENTER");else if(e.key==="Backspace")handle("BACKSPACE");else if(/^[a-zA-Z]$/.test(e.key))handle(e.key.toUpperCase())});
+setup();
+</script>
+</body>
+</html>
